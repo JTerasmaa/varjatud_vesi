@@ -589,6 +589,33 @@
     #game-footer .footer-info { text-align: left; }
   }
 
+  /* MODE BUTTONS */
+  .mode-select {
+    display: flex;
+    gap: 10px;
+    margin: 8px 0 4px;
+  }
+  .mode-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 8px;
+    border: 2px solid var(--black);
+    border-radius: 8px;
+    cursor: pointer;
+    background: transparent;
+    font-family: inherit;
+    color: var(--black);
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .mode-btn .mode-title { font-size: 0.9rem; font-weight: 700; }
+  .mode-btn .mode-desc { font-size: 0.7rem; color: var(--gray-dark); line-height: 1.4; }
+  .mode-btn.active { background: var(--black); color: var(--white); }
+  .mode-btn.active .mode-desc { color: var(--gray-light); }
+
   /* SCROLLBAR */
   #axis-track::-webkit-scrollbar { height: 6px; }
   #axis-track::-webkit-scrollbar-track { background: var(--gray-light); }
@@ -620,6 +647,29 @@
 
     <div class="setup-options">
       <div class="setup-option">
+        <label>Mängurežiim:</label>
+      </div>
+      <div class="mode-select">
+        <button class="mode-btn active" data-mode="harjutamine">
+          <span class="mode-title">Harjutamine</span>
+          <span class="mode-desc">Kaarte tuleb lõpmatult juurde. Valesti asetatud kaardid tulevad tagasi.</span>
+        </button>
+        <button class="mode-btn" data-mode="valjakutse">
+          <span class="mode-title">Väljakutse</span>
+          <span class="mode-desc">Saa kõigist käekaartidest lahti. Õigesti asetatud kaarte ei asendata.</span>
+        </button>
+      </div>
+      <div class="setup-option" id="reserve-option" style="display:none; margin-top:4px;">
+        <label>Kaarte mängus kokku:</label>
+        <select id="reserve-size">
+          <option value="10">10</option>
+          <option value="20" selected>20</option>
+          <option value="30">30</option>
+          <option value="40">40</option>
+          <option value="all">Kõik</option>
+        </select>
+      </div>
+      <div class="setup-option" style="margin-top:10px;">
         <label>Kaartide kategooriad:</label>
       </div>
       <div class="categories-check" id="cat-checks">
@@ -837,6 +887,7 @@ let correctCount = 0;
 let wrongCount = 0;
 let handSize = 4;
 let isAnimating = false;
+let gameMode = 'harjutamine';
 
 // ===== SETUP =====
 function showSetup() {
@@ -847,11 +898,20 @@ function startGame() {
   const selectedCats = [...document.querySelectorAll('#cat-checks input:checked')].map(i => i.value);
   if (selectedCats.length === 0) { alert('Vali vähemalt üks kategooria!'); return; }
 
+  gameMode = document.querySelector('.mode-btn.active').dataset.mode;
   handSize = parseInt(document.getElementById('hand-size').value);
   const axisStart = parseInt(document.getElementById('axis-start').value);
 
   // Filter and shuffle cards
-  const regularCards = CARDS_DATA.filter(c => !c.is_joker && selectedCats.includes(c.cat_code));
+  let regularCards = CARDS_DATA.filter(c => !c.is_joker && selectedCats.includes(c.cat_code));
+
+  // Väljakutse: limit pool to chosen reserve size
+  if (gameMode === 'valjakutse') {
+    const reserveVal = document.getElementById('reserve-size').value;
+    const maxPool = reserveVal === 'all' ? regularCards.length : Math.min(parseInt(reserveVal), regularCards.length);
+    regularCards = shuffle([...regularCards]).slice(0, maxPool);
+  }
+
   const jokerCards = CARDS_DATA.filter(c => c.is_joker);
 
   deck = shuffle([...regularCards]);
@@ -1068,21 +1128,26 @@ function placeCard(position) {
           wrongCount++;
           showFeedback(false, card);
 
-          // Remove from axis after showing feedback
+          // Remove from axis after showing feedback, put back in deck
           setTimeout(() => {
             const idx = axisCards.findIndex(c => c.id === card.id);
-            if (idx !== -1) {
-              axisCards.splice(idx, 1);
-            }
-            discardPile.push(card);
+            if (idx !== -1) axisCards.splice(idx, 1);
+            const insertPos = Math.floor(Math.random() * Math.max(1, deck.length));
+            deck.splice(insertPos, 0, card);
             renderAxis();
           }, 1500);
         }
 
         // Draw new card
-        if (deck.length > 0) {
-          const newCard = deck.pop();
-          handCards.push(newCard);
+        if (gameMode === 'harjutamine') {
+          if (deck.length === 0 && discardPile.length > 0) {
+            deck = shuffle([...discardPile]);
+            discardPile = [];
+          }
+          if (deck.length > 0) handCards.push(deck.pop());
+        } else {
+          // väljakutse: only refill on wrong (correct shrinks hand by 1)
+          if (!isCorrect && deck.length > 0) handCards.push(deck.pop());
         }
 
         setTimeout(() => {
@@ -1124,8 +1189,14 @@ function placeJoker(card, position) {
   handCards.splice(handIdx, 1);
   discardPile.push(card);
 
-  if (deck.length > 0) {
-    handCards.push(deck.pop());
+  if (gameMode === 'harjutamine') {
+    if (deck.length === 0 && discardPile.length > 0) {
+      deck = shuffle([...discardPile]);
+      discardPile = [];
+    }
+    if (deck.length > 0) handCards.push(deck.pop());
+  } else {
+    if (deck.length > 0) handCards.push(deck.pop());
   }
 
   setTimeout(() => {
@@ -1215,6 +1286,7 @@ function updateStats() {
 
 // ===== WIN CHECK =====
 function checkWin() {
+  if (gameMode === 'harjutamine') return;
   if (deck.length === 0 && handCards.length === 0) {
     setTimeout(() => showWin(), 500);
   }
@@ -1223,11 +1295,19 @@ function checkWin() {
 function showWin() {
   const total = correctCount + wrongCount;
   const pct = total > 0 ? Math.round(correctCount / total * 100) : 0;
-  document.getElementById('modal-title').textContent = 'Mäng läbi!';
-  document.getElementById('modal-body').textContent =
-    `Teljel on ${axisCards.length} kaarti.\n` +
-    `Õigeid paigutusi: ${correctCount} / ${total} (${pct}%).\n` +
-    `Kaardid on järjestatud väiksemast varjatust vee kulust suuremani!`;
+  if (gameMode === 'valjakutse') {
+    document.getElementById('modal-title').textContent = 'Väljakutse läbitud!';
+    document.getElementById('modal-body').textContent =
+      `Kõik kaardid on teljel!\n` +
+      `Õigeid paigutusi: ${correctCount} / ${total} (${pct}%).\n` +
+      `Täpsusmäär: ${pct >= 80 ? '⭐⭐⭐ Suurepärane!' : pct >= 60 ? '⭐⭐ Tubli!' : '⭐ Harjuta edasi!'}`;
+  } else {
+    document.getElementById('modal-title').textContent = 'Mäng läbi!';
+    document.getElementById('modal-body').textContent =
+      `Teljel on ${axisCards.length} kaarti.\n` +
+      `Õigeid paigutusi: ${correctCount} / ${total} (${pct}%).\n` +
+      `Kaardid on järjestatud väiksemast varjatust vee kulust suuremani!`;
+  }
   document.getElementById('modal').classList.add('show');
 }
 
@@ -1240,6 +1320,16 @@ function formatValue(v) {
   if (v >= 1000) return (v/1000).toFixed(v % 1000 === 0 ? 0 : 1) + 'k';
   return v.toString();
 }
+
+// ===== MODE BUTTONS =====
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('reserve-option').style.display =
+      btn.dataset.mode === 'valjakutse' ? 'flex' : 'none';
+  });
+});
 
 // ===== CATEGORY CHECKBOXES =====
 document.querySelectorAll('.cat-check').forEach(label => {

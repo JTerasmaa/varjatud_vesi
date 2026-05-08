@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Varjatud Vesi — Kaardimäng</title>
+<style>
+  :root {
+    --black: #0a0a0a;
+    --white: #f5f5f0;
+    --gray-light: #e8e8e2;
+    --gray-mid: #b0b0a8;
+    --gray-dark: #555550;
+    --correct: #2a7a2a;
+    --wrong: #8a1a1a;
+    --accent: #1a1a1a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--white);
+    color: var(--black);
+    font-family: 'Georgia', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  #header {
+    background: var(--black);
+    color: var(--white);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--black);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  #header h1 {
+    font-size: 1.3rem;
+    font-weight: normal;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  #stats {
+    display: flex;
+    gap: 24px;
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+  }
+  .stat { text-align: center; }
+  .stat-num { font-size: 1.4rem; font-weight: bold; display: block; }
+
+  /* GAME CONTAINER */
+  #game {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 57px);
+  }
+
+  /* AXIS AREA */
+  #axis-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+  #axis-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 8px 10px;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gray-dark);
+    flex-shrink: 0;
+  }
+  #axis-label span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #axis-label .arrow-left::before { content: "◄ "; }
+  #axis-label .arrow-right::after { content: " ►"; }
+
+  #axis-track {
+    flex: 1;
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  #axis-line {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--black);
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  #axis-cards {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 8px 20px;
+    min-width: max-content;
+    position: relative;
+    gap: 0;
+  }
+
+  /* SLOTS (insertion points on axis) */
+  .slot {
+    width: 12px;
+    height: 250px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .slot-inner {
+    width: 4px;
+    height: 100%;
+    background: transparent;
+    border-radius: 2px;
+    transition: all 0.2s;
+  }
+  body.has-selection .slot {
+    cursor: pointer;
+    width: 32px;
+  }
+  body.has-selection .slot-inner {
+    background: var(--gray-mid);
+  }
+  body.has-selection .slot:hover {
+    width: 50px;
+  }
+  body.has-selection .slot:hover .slot-inner {
+    background: var(--black);
+    width: 6px;
+  }
+  body.has-selection .slot:hover::after {
+    content: '+';
+    position: absolute;
+    font-size: 1.2rem;
+    color: var(--black);
+    font-weight: bold;
+  }
+
+  /* AXIS CARDS */
+  .axis-card {
+    flex-shrink: 0;
+    width: 170px;
+    height: 231px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid var(--black);
+    position: relative;
+    cursor: default;
+    background: var(--white);
+    box-shadow: 2px 2px 0 var(--black);
+    transition: transform 0.15s;
+  }
+  .axis-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .axis-card .val-badge {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 4px 6px;
+    letter-spacing: 0.05em;
+  }
+
+  /* PLAYER HAND */
+  #hand-section {
+    border-top: 3px solid var(--black);
+    background: var(--gray-light);
+    padding: 16px 20px;
+    min-height: 330px;
+    flex-shrink: 0;
+  }
+  #hand-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gray-dark);
+    margin-bottom: 10px;
+  }
+  #hand-cards {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .hand-card {
+    width: 200px;
+    height: 272px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid var(--black);
+    cursor: pointer;
+    position: relative;
+    background: var(--white);
+    box-shadow: 4px 4px 0 var(--black);
+    transition: transform 0.15s, box-shadow 0.15s;
+    flex-shrink: 0;
+  }
+  .hand-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 4px 14px 0 var(--black);
+  }
+  .hand-card.selected {
+    transform: translateY(-20px);
+    box-shadow: 4px 24px 0 var(--black);
+    outline: 3px solid var(--black);
+    outline-offset: 2px;
+  }
+  .hand-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .hand-card .joker-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--black);
+    color: var(--white);
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* FEEDBACK OVERLAY */
+  #feedback {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--black);
+    color: var(--white);
+    padding: 24px 40px;
+    border-radius: 12px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    z-index: 200;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    text-align: center;
+    max-width: 360px;
+  }
+  #feedback.show { opacity: 1; }
+  #feedback.correct { background: var(--correct); }
+  #feedback.wrong { background: var(--wrong); }
+  #feedback .feedback-sub {
+    font-size: 0.85rem;
+    font-weight: normal;
+    margin-top: 8px;
+    opacity: 0.85;
+    letter-spacing: 0.04em;
+  }
+
+  /* DECK/DISCARD PILE */
+  #piles {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-left: 8px;
+  }
+  .pile {
+    width: 64px;
+    height: 87px;
+    border-radius: 6px;
+    border: 2px dashed var(--gray-mid);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    color: var(--gray-dark);
+    letter-spacing: 0.05em;
+    text-align: center;
+    text-transform: uppercase;
+    position: relative;
+  }
+  .pile-count {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: var(--black);
+    display: block;
+  }
+
+  /* FLIP ANIMATION */
+  .flipping {
+    animation: cardFlip 0.6s ease-in-out forwards;
+  }
+  @keyframes cardFlip {
+    0%   { transform: translateY(-20px) rotateY(0deg); box-shadow: 4px 24px 0 #000; }
+    45%  { transform: translateY(-20px) rotateY(90deg); box-shadow: 0 24px 0 #000; }
+    55%  { transform: translateY(-20px) rotateY(90deg); }
+    100% { transform: translateY(0px) rotateY(0deg); box-shadow: 2px 2px 0 #000; }
+  }
+
+  /* MODAL / WIN SCREEN */
+  #modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+  }
+  #modal.show { display: flex; }
+  #modal-box {
+    background: var(--white);
+    border: 4px solid var(--black);
+    border-radius: 16px;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+  }
+  #modal-box h2 {
+    font-size: 2rem;
+    margin-bottom: 16px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  #modal-box p {
+    margin-bottom: 24px;
+    color: var(--gray-dark);
+    line-height: 1.6;
+    font-size: 0.95rem;
+  }
+  .btn {
+    background: var(--black);
+    color: var(--white);
+    border: none;
+    padding: 14px 32px;
+    font-size: 1rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.2s;
+    font-family: inherit;
+    margin: 4px;
+  }
+  .btn:hover { background: var(--gray-dark); }
+  .btn.secondary {
+    background: var(--white);
+    color: var(--black);
+    border: 2px solid var(--black);
+  }
+  .btn.secondary:hover { background: var(--gray-light); }
+
+  /* SETUP MODAL */
+  #setup-modal {
+    position: fixed;
+    inset: 0;
+    background: var(--black);
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #setup-box {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 48px;
+    max-width: 540px;
+    width: 90%;
+    text-align: center;
+  }
+  #setup-box h2 {
+    font-size: 2.2rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  #setup-box .subtitle {
+    font-size: 0.85rem;
+    color: var(--gray-dark);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+  .setup-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 32px;
+    text-align: left;
+  }
+  .setup-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9rem;
+  }
+  .setup-option label { cursor: pointer; }
+  .setup-option select, .setup-option input {
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 4px 8px;
+    border: 2px solid var(--black);
+    border-radius: 4px;
+    background: var(--white);
+  }
+  .categories-check {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 8px 0;
+  }
+  .cat-check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: 2px solid var(--black);
+    padding: 4px 10px;
+    border-radius: 20px;
+    user-select: none;
+    transition: all 0.15s;
+  }
+  .cat-check input { display: none; }
+  .cat-check.active {
+    background: var(--black);
+    color: var(--white);
+  }
+
+  /* INFO PANEL */
+  #info-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--black);
+    color: var(--white);
+    padding: 8px 20px;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 150;
+    line-height: 1.4;
+  }
+  #info-bar.show { opacity: 1; }
+
+  /* HOVER CARD INFO */
+  .axis-card:hover .card-tooltip,
+  .hand-card:hover .card-tooltip {
+    display: block;
+  }
+  .card-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--black);
+    color: var(--white);
+    font-size: 0.65rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    z-index: 50;
+    pointer-events: none;
+    max-width: 200px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .card-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: var(--black);
+  }
+
+  /* SELGITUS PANEL */
+  #selgitus-bar {
+    display: none;
+    background: var(--white);
+    border-top: 3px solid var(--black);
+    padding: 14px 24px 16px;
+    flex-shrink: 0;
+    max-height: 140px;
+    overflow-y: auto;
+    animation: selgitusFadeIn 0.3s ease;
+  }
+  #selgitus-bar.show { display: block; }
+  @keyframes selgitusFadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  #selgitus-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  #selgitus-item {
+    font-size: 0.78rem;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--black);
+  }
+  #selgitus-value-badge {
+    background: var(--black);
+    color: var(--white);
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
+  #selgitus-text {
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: #2a2a2a;
+  }
+
+  /* SCROLLBAR */
+  #axis-track::-webkit-scrollbar { height: 6px; }
+  #axis-track::-webkit-scrollbar-track { background: var(--gray-light); }
+  #axis-track::-webkit-scrollbar-thumb { background: var(--gray-dark); border-radius: 3px; }
+
+  /* RESPONSIVE */
+  @media (max-width: 768px) {
+    .hand-card { width: 150px; height: 204px; }
+    .axis-card { width: 120px; height: 163px; }
+    #hand-section { min-height: 250px; }
+    .slot { height: 185px; }
+    #stats { gap: 12px; font-size: 0.75rem; }
+  }
+  @media (max-width: 480px) {
+    .hand-card { width: 110px; height: 150px; }
+    .axis-card { width: 90px; height: 122px; }
+    #hand-section { min-height: 195px; }
+    .slot { height: 145px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SETUP MODAL -->
+<div id="setup-modal">
+  <div id="setup-box">
+    <h2>Varjatud Vesi</h2>
+    <p class="subtitle">Kaardimäng · Digitaalne versioon</p>
+
+    <div class="setup-options">
+      <div class="setup-option">
+        <label>Kaartide kategooriad:</label>
+      </div>
+      <div class="categories-check" id="cat-checks">
+        <label class="cat-check active"><input type="checkbox" value="S/J" checked>Söök & Jook</label>
+        <label class="cat-check active"><input type="checkbox" value="T" checked>Tekstiil</label>
+        <label class="cat-check active"><input type="checkbox" value="D/E" checked>Digi & Elektro</label>
+        <label class="cat-check active"><input type="checkbox" value="A" checked>Asjad</label>
+      </div>
+      <div class="setup-option" style="margin-top:12px;">
+        <label>Kaarte käes:</label>
+        <select id="hand-size">
+          <option value="3">3</option>
+          <option value="4" selected>4</option>
+          <option value="5">5</option>
+        </select>
+      </div>
+      <div class="setup-option">
+        <label>Algsed teljekaardid:</label>
+        <select id="axis-start">
+          <option value="3" selected>3</option>
+          <option value="5">5</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn" onclick="startGame()">Alusta mängu</button>
+
+    <p style="margin-top:20px; font-size:0.75rem; color:var(--gray-dark); line-height:1.6;">
+      Asetage kaardid teljele väiksemast varjatust vee kulust suuremani.<br>
+      Klõpsake käekaardil, seejärel valige koht teljel.
+    </p>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div id="header">
+  <h1>Varjatud Vesi</h1>
+  <div id="stats">
+    <div class="stat"><span class="stat-num" id="stat-correct">0</span>Õige</div>
+    <div class="stat"><span class="stat-num" id="stat-wrong">0</span>Vale</div>
+    <div class="stat"><span class="stat-num" id="stat-deck">—</span>Pakis</div>
+    <div class="stat"><span class="stat-num" id="stat-axis">—</span>Teljel</div>
+  </div>
+  <button class="btn secondary" onclick="showSetup()" style="font-size:0.75rem; padding:6px 16px;">↺ Uus mäng</button>
+</div>
+
+<!-- MAIN GAME -->
+<div id="game">
+  <!-- AXIS -->
+  <div id="axis-section">
+    <div id="axis-label">
+      <span class="arrow-left">Väiksem varjatud vesi</span>
+      <span style="font-size:0.65rem; opacity:0.5" id="hint-text">Vali kaart käest, seejärel koht teljel</span>
+      <span class="arrow-right">Suurem varjatud vesi</span>
+    </div>
+    <div id="axis-track">
+      <div id="axis-line"></div>
+      <div id="axis-cards"></div>
+    </div>
+  </div>
+
+  <!-- SELGITUS -->
+  <div id="selgitus-bar">
+    <div id="selgitus-header">
+      <span id="selgitus-item"></span>
+      <span id="selgitus-value-badge"></span>
+    </div>
+    <div id="selgitus-text"></div>
+  </div>
+
+  <!-- HAND -->
+  <div id="hand-section">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+      <div id="hand-label">Teie käsi</div>
+      <div id="piles">
+        <div class="pile">
+          <span class="pile-count" id="deck-count">0</span>
+          pakk
+        </div>
+        <div class="pile" style="border-style:solid; opacity:0.6;">
+          <span class="pile-count" id="discard-count">0</span>
+          ära
+        </div>
+      </div>
+    </div>
+    <div id="hand-cards"></div>
+  </div>
+</div>
+
+<!-- FEEDBACK -->
+<div id="feedback">
+  <div id="feedback-main"></div>
+  <div class="feedback-sub" id="feedback-sub"></div>
+</div>
+
+<!-- END MODAL -->
+<div id="modal">
+  <div id="modal-box">
+    <h2 id="modal-title">Mäng läbi!</h2>
+    <p id="modal-body"></p>
+    <button class="btn" onclick="showSetup()">Uus mäng</button>
+    <button class="btn secondary" onclick="closeModal()">Vaata tulemust</button>
+  </div>
+</div>
+
+<!-- INFO BAR -->
+<div id="info-bar">
+  <span id="info-text">Vali kaart</span>
+  <span id="info-value"></span>
+</div>
+
+<script>
+// ===== GAME DATA =====
+const CARDS_DATA = [{"id": "food-01", "item": "1 kg sealiha", "value": 6000, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-01.png", "back_img": "cards/food-02.png", "fact": "Tüüpiline portsjon on 150-200 g. 1 kg-st sealihast saab  5-7 toidukorda."}, {"id": "food-02", "item": "1 kg veiseliha", "value": 15400, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-03.png", "back_img": "cards/food-04.png", "fact": "Tüüpiline portsjon on 150-200 g. 1 kg-st veiselihast saab  5-7 toidukorda."}, {"id": "food-03", "item": "1 kg lambaliha", "value": 10400, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-05.png", "back_img": "cards/food-06.png", "fact": "Tüüpiline portsjon on 150-200 g. 1 kg-st lambalihast saab  5-7 toidukorda."}, {"id": "food-04", "item": "1 kg kanaliha", "value": 4300, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-07.png", "back_img": "cards/food-08.png", "fact": "Tüüpiline portsjon on 150-200 g. 1 kg-st kanalihast saab 5-7 toidukorda. Mitu liitrit vett kulub"}, {"id": "food-05", "item": "1 kg juustu", "value": 5000, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-09.png", "back_img": "cards/food-10.png", "fact": "Kui igal hommikul süüa kolm viilu juustu, siis jagub 1 kg umbes kaheks nädalaks."}, {"id": "food-06", "item": "1 L piima", "value": 1000, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-11.png", "back_img": "cards/food-12.png", "fact": "1 klaasi piima veekulu on 200 l. 1 cappuccino piimakogus tähendab 85 l veekulu. 1 liiter piima"}, {"id": "food-07", "item": "1 muna (50 g)", "value": 200, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-13.png", "back_img": "cards/food-14.png", "fact": "Keskmise omleti (2 muna, õli, piim, maitseained) veekulu on 470 l. 1 muna"}, {"id": "food-08", "item": "1 paki või (200 g)", "value": 6000, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-15.png", "back_img": "cards/food-16.png", "fact": "Keskmisele võilevale kulub ~10 g võid - selle vee jalajälg on 300 l. 1 pakk võid (200 g)"}, {"id": "food-09", "item": "1 juustuvõileiva", "value": 440, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-17.png", "back_img": "cards/food-18.png", "fact": "Võileiva veekulu jaguneb: viil saia (40 l), 10 g võid (300 l), 20 g viil juustu (100 l). 1 juustuvõileib"}, {"id": "food-10", "item": "1 singivõileiva", "value": 520, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-19.png", "back_img": "cards/food-20.png", "fact": "Võileiva veekulu jaguneb: viil saia (40 l), 10 g võid (300 l), 30 g viil sinki (180 l). 1 singivõileib"}, {"id": "food-11", "item": "1 taimse võileiva", "value": 140, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-21.png", "back_img": "cards/food-22.png", "fact": "Võileiva veekulu jaguneb: viil saia (40 l), taimne määre (20 l), 2 tomativiilu (4,4 l), salatileht (2,2 l), tofuviil (75 l). 1 taimne võileib"}, {"id": "food-12", "item": "1 kg nisujahu", "value": 1300, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-23.png", "back_img": "cards/food-24.png", "fact": "1 pätsi tavalise saia (~500 g) veekulu on ~650 l. See tuleneb peamiselt nisu kasvatamiseks kulunud veest."}, {"id": "food-13", "item": "1 kg maisi", "value": 900, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-25.png", "back_img": "cards/food-26.png", "fact": "Ühe portsu maisihelveste (~30 g) veejalajälg on 35 l. Kui neid süüa piimaga, siis lisandub 120 l."}, {"id": "food-14", "item": "1 kg riisi", "value": 2500, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-27.png", "back_img": "cards/food-28.png", "fact": "1 portsjoni riisi (50-75 g kuivainet) veekulu on ~200 l."}, {"id": "food-15", "item": "1 kg suhkru", "value": 1300, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-29.png", "back_img": "cards/food-30.png", "fact": "1 teelusika täie suhkru (4 g) vee jalajälg on 5 l. 1 kg suhkrut"}, {"id": "food-16", "item": "1 kg šokolaadi", "value": 17000, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-31.png", "back_img": "cards/food-32.png", "fact": "Kakaoubade kasvatamine on väga veemahukas. Hilisem töötlemine lisab sellele veelgi juurde."}, {"id": "food-17", "item": "1 kg kohvi", "value": 21000, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-33.png", "back_img": "cards/food-34.png", "fact": "1 tass kohvi (~10 g kohvipuru) veekulu on 210 l."}, {"id": "food-18", "item": "1 tassi tee", "value": 20, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-35.png", "back_img": "cards/food-36.png", "fact": "1 kg tee veekulu on kuni 10 000 l, kuid ühe tassitäie jaoks kulub seda vaid paar grammi. 1 tass teed"}, {"id": "food-19", "item": "1 klaasi veini", "value": 130, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-37.png", "back_img": "cards/food-38.png", "fact": "Viinamarjaistandused on sageli niisutussüsteemidega. 1 l veini veekulu on 870 l. 1 klaas veini"}, {"id": "food-20", "item": "1 pudeli õlu", "value": 150, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-39.png", "back_img": "cards/food-40.png", "fact": "Õlle veekulu sõltub regioonist ja tooraine (odra) kasvatamisest. Tsehhi õlle veekulu peetakse üheks väiksemaks. 1 pudel õlut"}, {"id": "food-21", "item": "1 klaasi limonaadi", "value": 100, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-41.png", "back_img": "cards/food-42.png", "fact": "Veekulu tuleb peamiselt suhkrust, kuid ka teised lisaained, tootmine ja pakendamine omavad olulist mõju. 1 klaas limonaadi"}, {"id": "food-22", "item": "1 kg õunte", "value": 700, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-43.png", "back_img": "cards/food-44.png", "fact": "1 keskmine õuna (~180 g) veekulu on 130 l. 1 kg õunu"}, {"id": "food-23", "item": "1 kg apelsinide", "value": 500, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-45.png", "back_img": "cards/food-46.png", "fact": "1 keskmise apelsini (~120 g) veekulu on 65 l. Teiste tsitruseliste veekulu on veidi suurem. 1 kg apelsine"}, {"id": "food-24", "item": "1 kg banaanide", "value": 860, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-47.png", "back_img": "cards/food-48.png", "fact": "Banaanide veekulu tuleneb peamiselt kasvatamisest. Näiteks pakkimine lisab üldarvestusse ~1 l vett. 1 kg banaane"}, {"id": "food-25", "item": "1 kg tomatite", "value": 180, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-49.png", "back_img": "cards/food-50.png", "fact": "Tomat on üks väikseima veekuluga köögivilju, sest tihti kasutatakse tilkkastmist. 1 kg tomateid"}, {"id": "food-26", "item": "1 kg mandlite", "value": 16000, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-51.png", "back_img": "cards/food-52.png", "fact": "Mandlite veetarve on väga kõrge, aga istandused asuvad kuivas kliimas - vajalik on pidev kastmine. 1 kg mandleid"}, {"id": "food-27", "item": "1 kg kartulite", "value": 280, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-53.png", "back_img": "cards/food-54.png", "fact": "Kartuleid kasvatakse niiskes kliimas. Ühe ~300 g paki kartulikrõpsude veekulu on 35 l. 1 kg kartuleid"}, {"id": "food-28", "item": "1 kg läätsede", "value": 1900, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-55.png", "back_img": "cards/food-56.png", "fact": "Läätsede veekulu on keskmine, kuid lisatavate põllumajanduskemikaalide mõju suur. 1 kg läätsi"}, {"id": "food-29", "item": "1 kg lehtsalati", "value": 230, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-57.png", "back_img": "cards/food-58.png", "fact": "Kuigi veekulu on väike, vajab see kastmisüsteeme ning lisatavad toitained ja kemikaalid reostavad vett. 1 kg lehtsalatit"}, {"id": "food-30", "item": "1 l apelsinimahla", "value": 1000, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-59.png", "back_img": "cards/food-60.png", "fact": "Klaasitäie apelsinimahla veekulu on 250 l."}, {"id": "food-31", "item": "1 l õunamahla", "value": 1150, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-61.png", "back_img": "cards/food-62.png", "fact": "Klaasitäie õunamahla veekulu on 270 l."}, {"id": "food-32", "item": "1 l pudelivee", "value": 8, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-63.png", "back_img": "cards/food-64.png", "fact": "1 l vee puhastamiseks kulub umbes 3 l vett. Selle lisandub plastpudeli tootmise veekulu - 5 l. 1 l pudelivett"}, {"id": "food-33", "item": "1 l mandlipiima", "value": 1000, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-65.png", "back_img": "cards/food-66.png", "fact": "Mandlipiima veekulu sõltub kasutatud mandlite kogustest. Lahjema piima veekulu võib olla 2-3x väiksem."}, {"id": "food-34", "item": "1 l sojapiima", "value": 250, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-67.png", "back_img": "cards/food-68.png", "fact": "1 liitri sojapiima jaoks kulub umbes 100 grammi sojaube."}, {"id": "food-35", "item": "1 l kaerapiima", "value": 110, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-69.png", "back_img": "cards/food-70.png", "fact": "Juues tassi cappuccinot kaerapiimaga, on kohvile lisanduv veekulu  alla 10 l."}, {"id": "food-36", "item": "1 kg makaronide", "value": 1800, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": false, "front_img": "cards/food-71.png", "back_img": "cards/food-72.png", "fact": "1 portsjoni makaronide (100-120 g kuivainet) veekulu on ~200 l. 1 kg makarone"}, {"id": "food-37", "item": "“Varjatud vesi” kaardipaki", "value": 34, "category": "Söök & Jook", "cat_code": "S/J", "is_joker": true, "front_img": "cards/food-73.png", "back_img": "cards/food-74.png", "fact": "Suurim varjatud vee kulu on kaartide materjalil (30 l/pakk), pappkarp lisab 3 l. Riidest pakend on jääkmaterjalist, veekulu on vaid serva teppmiseks"}, {"id": "textile-01", "item": "1 puuvillase T-särgi", "value": 2700, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-01.png", "back_img": "cards/textile-02.png", "fact": "Puuvillakasvatus vajab palju niisutusvett, kuigi taim on kohastunud kuumas ja kuivas kliimas kasvama. 1 puuvillane T-särk"}, {"id": "textile-02", "item": "1 paari teksapükste", "value": 10000, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-03.png", "back_img": "cards/textile-04.png", "fact": "Inimene joob aastas ~700 l vett. Seega kulub paari teksaste peale 14 aasta kogus joogivett. 1 paar teksapükse"}, {"id": "textile-03", "item": "1 puuvillase poekoti", "value": 1700, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-05.png", "back_img": "cards/textile-06.png", "fact": "Orgaaniline puuvillakasvatus kulutab vaid umbes 9% tavapärase istanduse veest. 1 puuvillane poekott"}, {"id": "textile-04", "item": "1 villase kampsuni", "value": 10000, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-07.png", "back_img": "cards/textile-08.png", "fact": "Villa puhul võetakse arvesse ka lamba kasvatamist, millele lisanduvad materjali töötlemise kulud. 1 villane kampsun"}, {"id": "textile-05", "item": "1 paari puuvillaste sokkide", "value": 400, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-09.png", "back_img": "cards/textile-10.png", "fact": "Keskmiselt on ühel inimesel 10-20 paari sokke. 1 paar puuvillaseid sokke T/R"}, {"id": "textile-06", "item": "1 orgaanilisest linasest särgi", "value": 4, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-11.png", "back_img": "cards/textile-12.png", "fact": "Linasest riidest rõivaste veekulu on väga väike, seega tasub eelistada kodumaist kaupa. 1 linasest särk"}, {"id": "textile-07", "item": "1 polüestersärgi", "value": 900, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-13.png", "back_img": "cards/textile-14.png", "fact": "Sünteetiliste rõivaste veekulu on väike, kuid kaasnev keskkonnareostus (nt eralduv pisiplast) on suur. 1 polüestersärk"}, {"id": "textile-08", "item": "1 paari nahkkingade", "value": 8000, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-15.png", "back_img": "cards/textile-16.png", "fact": "Kingade suur peidetud veekulu tuleneb nii pealsete kui ka taldade materjalist. 1 paar nahkkingi T/R"}, {"id": "textile-09", "item": "1 TENCEL särgi", "value": 150, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-17.png", "back_img": "cards/textile-18.png", "fact": "TENCEL (/Lyocell) on puidumassist toodetud madala keskkonnamõjuga tekstiil. 1 TENCEL särk"}, {"id": "textile-10", "item": "1 paari riidest jalatsite", "value": 3500, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-19.png", "back_img": "cards/textile-20.png", "fact": "Veekogus sõltub kattematerjalist - puuvillane on veemahukas, sünteetiline vähem. 1 paar riidest jalatseid"}, {"id": "textile-11", "item": "1 puuvillase pusa", "value": 5000, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-21.png", "back_img": "cards/textile-22.png", "fact": "Valides orgaanilisest puuvillast valmistatud rõiva, on veekulu võimalik vähendada kuni 10 korda. 1 puuvillane pusa"}, {"id": "textile-12", "item": "1 puuvillase voodilina", "value": 10000, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-23.png", "back_img": "cards/textile-24.png", "fact": "95% orgaanilise puuvilla kasvatamiseks kuluvast veest on nn“roheline vesi” - st looduslik vihmavesi. 1 puuvillane voodilina"}, {"id": "textile-13", "item": "1 polüesterfliisi", "value": 1200, "category": "Tekstiil", "cat_code": "T", "is_joker": false, "front_img": "cards/textile-25.png", "back_img": "cards/textile-26.png", "fact": "Kuigi veekulu on suhteliselt väike, on keskkonnamõju pisiplasti kujul väga suur. 1 polüesterfliis"}, {"id": "digi-01", "item": "1 tund HD-video voogedastust", "value": 5, "category": "Digi & Elektro", "cat_code": "D/E", "is_joker": false, "front_img": "cards/digi-01.png", "back_img": "cards/digi-02.png", "fact": "Videovaatamise veekulu sõltub video kvaliteedist. Ka tänapäevane kaabel- televisioon põhineb voogedastusel. D"}, {"id": "digi-02", "item": "1 tund 4K-video voogedastust", "value": 15, "category": "Digi & Elektro", "cat_code": "D/E", "is_joker": false, "front_img": "cards/digi-03.png", "back_img": "cards/digi-04.png", "fact": "Kõrgresolutsiooniline video on väga mahukas. Väikesel ekraanil piisaks ka madalamast kvaliteedist. D"}, {"id": "digi-03", "item": "1 tund online mängimist", "value": 5, "category": "Digi & Elektro", "cat_code": "D/E", "is_joker": false, "front_img": "cards/digi-05.png", "back_img": "cards/digi-06.png", "fact": "Mängimise veekulu sõltub väga palju mängu tüübist - kas mäng on pilvepõhine või asub seadmes. D"}, {"id": "digi-04", "item": "1 tund videokonverentsi", "value": 7, "category": "Digi & Elektro", "cat_code": "D/E", "is_joker": false, "front_img": "cards/digi-07.png", "back_img": "cards/digi-08.png", "fact": "Videokõne veejalajälg on väiksem kui meelelahutuseks kasutatavatel raken- dustel, sest video kvaliteet on madalam. D"}, {"id": "digi-05", "item": "1 e-kirja saatmine", "value": 1, "category": "Digi & Elektro", "cat_code": "D/E", "is_joker": false, "front_img": "cards/digi-09.png", "back_img": "cards/digi-10.png", "fact": "Ühe kirja kulu on väike, aga loe kokku kõik päevased kirjad (nt ka sissetulev spämm ja manused). 0.01"}, {"id": "digi-06", "item": "1 tund sotsiaalmeediat", "value": 1, "category": "Digi & Elektro", "cat_code": "D/E", "is_joker": false, "front_img": "cards/digi-11.png", "back_img": "cards/digi-12.png", "fact": "Selle jalajälg on üha suurenenud, sest sotsiaalmeediavoos on üha rohkem videosid. D"}, {"id": "digi-07", "item": "1 veebipäring", "value": 1, "category": "Digi & Elektro", "cat_code": "D/E", "is_joker": false, "front_img": "cards/digi-13.png", "back_img": "cards/digi-14.png", "fact": "Lihtne veebipõring on tänu pikaajalisele optimeerimisele suhteliselt madala vee tarbimisega. 0.01"}, {"id": "digi-08", "item": "1 AI päring", "value": 2, "category": "Digi & Elektro", "cat_code": "D/E", "is_joker": false, "front_img": "cards/digi-15.png", "back_img": "cards/digi-16.png", "fact": "AI-põhised lahendused vajavad suuremat arvutusvõimsust ja jahutust, mis toob kaasa suurema veekasutuse. 0.2"}, {"id": "digi-09", "item": "1 GB andmeid pilves", "value": 7, "category": "Digi & Elektro", "cat_code": "D/E", "is_joker": false, "front_img": "cards/digi-17.png", "back_img": "cards/digi-18.png", "fact": "Väldi digiprügi - ära hoia oma pilveteestustes vanu ja ebavajalikke faile. D"}, {"id": "digi-10", "item": "1 tund muusika voogedastust", "value": 2, "category": "Digi & Elektro", "cat_code": "D/E", "is_joker": false, "front_img": "cards/digi-19.png", "back_img": "cards/digi-20.png", "fact": "Kui kuulad oma lemmiklugusid tihti, siis salvesta need oma seadmesse! 0.2 D"}, {"id": "digi-11", "item": "Veebilehe majutus", "value": 125, "category": "Digi & Elektro", "cat_code": "D/E", "is_joker": false, "front_img": "cards/digi-21.png", "back_img": "cards/digi-22.png", "fact": "Mõju sõltub serveri tüübist ja majutatava lehe mahust ning populaarsusest. D D"}, {"id": "digi-12", "item": "1 digitaalne foto", "value": 1, "category": "Digi & Elektro", "cat_code": "D/E", "is_joker": false, "front_img": "cards/digi-23.png", "back_img": "cards/digi-24.png", "fact": "Keskmises nutiseadmes on 2800 pilti. Nende pilve saatmise veekulu on üle 80 l. 0.01"}, {"id": "asjad-01", "item": "1 nutitelefoni", "value": 13000, "category": "Asjad", "cat_code": "A", "is_joker": false, "front_img": "cards/asjad-01.png", "back_img": "cards/asjad-02.png", "fact": "Vesi kulub materjalide (metall, plast) ja komponentide (kiibistik, ekraan) tootmiseks. 1 nutitelefon"}, {"id": "asjad-02", "item": "1 sülearvuti", "value": 60000, "category": "Asjad", "cat_code": "A", "is_joker": false, "front_img": "cards/asjad-03.png", "back_img": "cards/asjad-04.png", "fact": "Arvuti varjatud vee koguses domineerib elektroonikakomponentide tootmine. I I"}, {"id": "asjad-03", "item": "1 LED pirni", "value": 15, "category": "Asjad", "cat_code": "A", "is_joker": false, "front_img": "cards/asjad-05.png", "back_img": "cards/asjad-06.png", "fact": "Sõltub pirni suurusest, kuid otsene tootmise varjatud vee kogus võib jääda vaid paari liitri juurde. 1 LED pirn"}, {"id": "asjad-04", "item": "1 pesumasina", "value": 35000, "category": "Asjad", "cat_code": "A", "is_joker": false, "front_img": "cards/asjad-07.png", "back_img": "cards/asjad-08.png", "fact": "Tootmise veekulu on vaid osa pesumasina kogumõjust veele - üks pesukord võtab 40-90 l vett. 1 pesumasin"}, {"id": "asjad-05", "item": "1 nutikella", "value": 1000, "category": "Asjad", "cat_code": "A", "is_joker": false, "front_img": "cards/asjad-09.png", "back_img": "cards/asjad-10.png", "fact": "Peamine varjatud vee kulu tuleb kiibi tootmisest - väike kaal ei tähenda väikest veekulu. 1 nutikell"}, {"id": "asjad-06", "item": "1 A4 paberilehe", "value": 10, "category": "Asjad", "cat_code": "A", "is_joker": false, "front_img": "cards/asjad-11.png", "back_img": "cards/asjad-12.png", "fact": "Vanapaberi ümbertöötlemine aitab kuni 40% veekulust kokku hoida. 1 A4 paberileht I"}, {"id": "asjad-07", "item": "1 keraamilise kruusi", "value": 15, "category": "Asjad", "cat_code": "A", "is_joker": false, "front_img": "cards/asjad-13.png", "back_img": "cards/asjad-14.png", "fact": "Korduvkasutatav kruus “tasub” end ära ruttu; igapäevaselt määrab jalajälje pigem pesemise viis, kui kruusi enda tootmine. 1 keraamiline kruus"}, {"id": "asjad-08", "item": "1 lusika", "value": 10, "category": "Asjad", "cat_code": "A", "is_joker": false, "front_img": "cards/asjad-15.png", "back_img": "cards/asjad-16.png", "fact": "Metalli jalajälg on suur, kuid lusika pikk eluiga jagab selle suurele arvule kasutuskordadele. 1 lusikas"}, {"id": "asjad-09", "item": "1 jalgratta", "value": 7500, "category": "Asjad", "cat_code": "A", "is_joker": false, "front_img": "cards/asjad-17.png", "back_img": "cards/asjad-18.png", "fact": "Peamine veekulu tuleb metalli tootmisest. Rehvide varajatud vesi on ~20 l 1 jalgratas I"}, {"id": "asjad-10", "item": "1 auto", "value": 200000, "category": "Asjad", "cat_code": "A", "is_joker": false, "front_img": "cards/asjad-19.png", "back_img": "cards/asjad-20.png", "fact": "Autode varjatud vee kogus sõltub kasutatud materjalidest ja tehnoloogiatest. Üldiselt jääb vahemikku 50 000 - 400 000 l. I"}, {"id": "asjad-11", "item": "1 rehvi", "value": 2000, "category": "Asjad", "cat_code": "A", "is_joker": false, "front_img": "cards/asjad-21.png", "back_img": "cards/asjad-22.png", "fact": "Rehvi valmistamine on energiamahukas, veekulu sõltub materjali koostisest. 1 rehv I"}, {"id": "asjad-12", "item": "1 märkmiku", "value": 1700, "category": "Asjad", "cat_code": "A", "is_joker": false, "front_img": "cards/asjad-23.png", "back_img": "cards/asjad-24.png", "fact": "Lisaks paberi varjatud vee kulule on olulise tähtsusega ka kaante materjal. 1 märkmik I"}];
+
+// ===== CARD FACTS (xlsx: Varjatud_vesi_selgitused) =====
+const CARD_FACTS = {
+  "food-01": "Tüüpiline portsjon on 150-200 g. 1 kg sealihast saab 5-7 toidukorda.",
+  "food-02": "Tüüpiline portsjon on 150-200 g. 1 kg veiselihast saab 5-7 toidukorda.",
+  "food-03": "Tüüpiline portsjon on 150-200 g. 1 kg lambalihast saab 5-7 toidukorda.",
+  "food-04": "Tüüpiline portsjon on 150-200 g. 1 kg kanast saab 5-7 toidukorda.",
+  "food-05": "Kui igal hommikul süüa kolm viilu juustu, siis 1 kg jagub umbes kaheks nädalaks.",
+  "food-06": "Ühe klaasi piima veekulu on 200 l. Ühe cappuccino jaoks minev piimakogus tähendab 85 l veekulu.",
+  "food-07": "Keskmise omleti (2 muna, õli, piim, maitseained) veekulu on 470 l.",
+  "food-08": "Keskmisele võilevale kulub ~10 g võid — selle vee jalajälg on 300 l.",
+  "food-09": "Võileiva veekulu jaguneb: viil saia (40 l), 10 g võid (300 l), 20 g viil juustu (100 l).",
+  "food-10": "Võileiva veekulu jaguneb: viil saia (40 l), 10 g võid (300 l), 30 g viil sinki (180 l).",
+  "food-11": "Võileiva veekulu jaguneb: viil saia (40 l), taimne määre (20 l), kaks tomativiilu (4,4 l), salatileht (2,2 l), tofuviil (75 l).",
+  "food-12": "1 pätsi tavalise saia (~500 g) veekulu on ~650 l. See tuleneb peamiselt nisu kasvatamiseks kulunud veest.",
+  "food-13": "Ühe portsu maisihelveste (~30 g) veejalajälg on 35 l. Kui neid süüa piimaga, siis lisandub 120 l.",
+  "food-14": "1 portsjoni riisi (50-75 g kuivainet) veekulu on ~200 l.",
+  "food-15": "1 teelusika täie suhkru (4 g) vee jalajälg on 5 l.",
+  "food-16": "Kakaoubade kasvatamine on väga veemahukas. Hilisem töötlemine lisab sellele veelgi juurde.",
+  "food-17": "1 tass kohvi (~10 g kohvipuru) veekulu on 210 l.",
+  "food-18": "1 kg tee veekulu on kuni 10 000 l, kuid ühe tassitäie jaoks kulub seda vaid paar grammi.",
+  "food-19": "Viinamarjaistandused on sageli niisutussüsteemidega. 1 l veini veekulu on 870 l.",
+  "food-20": "Õlle veekulu sõltub regioonist ja tooraine (odra) kasvatamisest. Tsehhi õlle veekulu peetakse üheks väiksemaks.",
+  "food-21": "Veekulu tuleb peamiselt suhkrust, kuid ka teised lisaained, tootmine ja pakendamine omavad olulist mõju.",
+  "food-22": "Ühe keskmise õuna (~180 g) veekulu on 130 l.",
+  "food-23": "Ühe keskmise apelsini (~120 g) veekulu on 65 l. Teiste tsitruseliste veekulu on veidi suurem.",
+  "food-24": "Banaanide veekulu tuleneb peamiselt kasvatamisest. Näiteks pakkimine lisab üldarvestusse ~1 l vett.",
+  "food-25": "Tomat on üks väikseima veekuluga köögivilju, sest tihti kasutatakse tilkkastmist.",
+  "food-26": "Mandlite veetarve on väga kõrge, aga istandused asuvad kuivas kliimas — vajalik on pidev kastmine.",
+  "food-27": "Kartuleid kasvatakse niiskes kliimas. Ühe ~300 g paki kartulikrõpsude veekulu on 35 l.",
+  "food-28": "Läätsede veekulu on keskmine, kuid lisatavate põllumajanduskemikaalide mõju suur.",
+  "food-29": "Kuigi veekulu on väike, vajab see kastmisüsteeme ning lisatavad toitained ja kemikaalid reostavad vett.",
+  "food-30": "Klaasitäie apelsinimahla veekulu on 250 l.",
+  "food-31": "Klaasitäie õunamahla veekulu on 270 l.",
+  "food-32": "1 l vee puhastamiseks kulub umbes 3 l vett. Sellele lisandub plastpudeli tootmise veekulu — 5 l.",
+  "food-33": "Mandlipiima veekulu sõltub kasutatud mandlite kogusest. Lahjema piima veekulu võib olla 2-3× väiksem.",
+  "food-34": "1 l sojapiima jaoks kulub ~100 g sojaube.",
+  "food-35": "Juues tassi cappuccinot kaerapiimaga, on kohvile lisanduv veekulu alla 10 l.",
+  "food-36": "1 portsjoni pasta (100-120 g kuivainet) veekulu on ~200 l.",
+  "food-37": "Suurim varjatud vee kulu on kaartide materjalil (30 l/pakk), pappkarp lisab 3 l. Tindi ja vesilaki kulu on väike. Riidest pakend on jääkmaterjalist, veekulu on vaid serva õmblemiseks kasutatud polüesterniidil.",
+  "textile-01": "Puuvillakasvatus vajab palju niisutusvett, kuigi taim on kohastunud kuumas ja kuivas kliimas kasvama.",
+  "textile-02": "Inimene joob aastas ~700 l vett. Seega kulub paari teksaste peale 14 aasta joogivesi.",
+  "textile-03": "Orgaaniline puuvillakasvatus kulutab vaid umbes 9% tavapärase istanduse veest.",
+  "textile-04": "Villa puhul võetakse arvesse ka lamba kasvatamist, millele lisanduvad materjali töötlemise kulud.",
+  "textile-05": "Keskmiselt on ühel inimesel 10-20 paari sokke.",
+  "textile-06": "Linasest riidest rõivaste veekulu on väga väike, eriti tasub eelistada kodumaist kaupa.",
+  "textile-07": "Sünteetiliste rõivaste veekulu on väike, kuid kaasnev keskkonnareostus (nt eralduv pisiplast) suur.",
+  "textile-08": "Kingade suur peidetud veekulu tuleneb nii pealsete kui taldade materjalist.",
+  "textile-09": "TENCEL (/Lyocell) on puidumassist toodetud madala keskkonnamõjuga tekstiil.",
+  "textile-10": "Veekogus sõltub pealsete materjalist — puuvillane on veemahukas, sünteetiline vähem.",
+  "textile-11": "Valides orgaanilisest puuvillast valmistatud rõiva, on veekulu võimalik vähendada kuni 10 korda.",
+  "textile-12": "95% orgaanilise puuvilla kasvatamiseks kuluvast veest on nn „roheline vesi“ — st looduslik vihmavesi.",
+  "textile-13": "Kuigi veekulu on suhteliselt väike, on keskkonnamõju pisiplasti kujul väga suur.",
+  "digi-01": "Videovaatamise veekulu sõltub video kvaliteedist. Ka tänapäevane kaabeltelevisioon põhineb voogedastusel.",
+  "digi-02": "Kõrgresolutsiooniline video on väga mahukas. Väikesel ekraanil piisaks ka madalamast kvaliteedist.",
+  "digi-03": "Mängimise veekulu sõltub väga palju mängu tüübist — kas mäng on pilvepõhine või asub seadmes.",
+  "digi-04": "Videokõne veejalajälg on väiksem kui meelelahutuseks kasutatavatel rakendustel, sest video kvaliteet on madalam.",
+  "digi-05": "Ühe kirja kulu on väike, aga loe kokku kõik päevased kirjad (nt ka sissetulev spämm).",
+  "digi-06": "Selle jalajälg on üha suurenenud, sest sotsiaalmeediavoos on üha rohkem videosid.",
+  "digi-07": "Lihtne veebiotsing on tänu pikaajalisele optimeerimisele suhteliselt madala vee tarbimisega.",
+  "digi-08": "AI-põhised lahendused vajavad suuremat arvutusvõimsust ja jahutust, mis toob kaasa suurema veekasutuse.",
+  "digi-09": "Võitle digiprügiga — ära hoia oma pilveteenustes vanu ja ebavajalikke faile.",
+  "digi-10": "Kui kuulad oma lemmiklugusid tihti, siis salvesta need oma seadmesse!",
+  "digi-11": "Mõju sõltub serveri tüübist ja majutatava lehe mahust ning populaarsusest.",
+  "digi-12": "Keskmises nutiseadmes on 2800 pilti. Nende pilve saatmise veekulu on üle 80 l.",
+  "asjad-01": "Vesi kulub materjalide (metall, plast) ja komponentide (kiibistik, ekraan) tootmiseks.",
+  "asjad-02": "Arvuti varjatud vee koguses domineerib elektroonikakomponentide tootmine.",
+  "asjad-03": "Sõltub pirni suurusest, kuid otsene tootmise varjatud vee kogus võib jääda vaid paari liitri juurde.",
+  "asjad-04": "Tootmise veekulu on vaid osa pesumasina kogumõjust veele — üks pesukord võtab 40-90 l vett.",
+  "asjad-05": "Peamine varjatud vee kulu tuleb kiibi tootmisest — väike kaal ei tähenda väikest veekulu.",
+  "asjad-06": "Vanapaberi ümbertöötlemine aitab kuni 40% veekulust kokku hoida.",
+  "asjad-07": "Korduvkasutatav kruus \"tasub\" end ära ruttu; igapäevaselt määrab jalajälje pigem pesemise viis kui kruusi enda tootmine.",
+  "asjad-08": "Metalli jalajälg on suur, kuid lusika pikk eluiga jagab selle suurele arvule kasutuskordadele.",
+  "asjad-09": "Peamine veekulu tuleb metalli tootmisest. Rehvide varjatud vesi on ~20 l.",
+  "asjad-10": "Autode varjatud vee kogus sõltub kasutatud materjalidest ja tehnoloogiatest. Üldiselt jääb vahemikku 50 000–400 000 l.",
+  "asjad-11": "Rehvi valmistamine on energiamahukas, veekulu sõltub materjali koostisest.",
+  "asjad-12": "Lisaks paberi varjatud vee kulule on olulise tähtsusega ka kaante materjal."
+};
+
+// ===== GAME STATE =====
+let deck = [];
+let axisCards = [];
+let handCards = [];
+let discardPile = [];
+let selectedCard = null;
+let correctCount = 0;
+let wrongCount = 0;
+let handSize = 4;
+let isAnimating = false;
+
+// ===== SETUP =====
+function showSetup() {
+  document.getElementById('setup-modal').style.display = 'flex';
+}
+
+function startGame() {
+  const selectedCats = [...document.querySelectorAll('#cat-checks input:checked')].map(i => i.value);
+  if (selectedCats.length === 0) { alert('Vali vähemalt üks kategooria!'); return; }
+
+  handSize = parseInt(document.getElementById('hand-size').value);
+  const axisStart = parseInt(document.getElementById('axis-start').value);
+
+  // Filter and shuffle cards
+  const regularCards = CARDS_DATA.filter(c => !c.is_joker && selectedCats.includes(c.cat_code));
+  const jokerCards = CARDS_DATA.filter(c => c.is_joker);
+
+  deck = shuffle([...regularCards]);
+
+  // Add jokers if food is selected
+  if (selectedCats.includes('S/J')) {
+    deck.splice(Math.floor(Math.random() * deck.length), 0, ...jokerCards);
+  }
+
+  axisCards = [];
+  handCards = [];
+  discardPile = [];
+  selectedCard = null;
+  correctCount = 0;
+  wrongCount = 0;
+
+  // Place initial axis cards (3 random, spread across value range)
+  const sorted = [...deck].filter(c => !c.is_joker).sort((a,b) => a.value - b.value);
+  const step = Math.floor(sorted.length / (axisStart + 1));
+  const initIndices = [];
+  for (let i = 1; i <= axisStart; i++) initIndices.push(step * i);
+
+  for (const idx of initIndices) {
+    const card = sorted[idx];
+    const deckIdx = deck.findIndex(c => c.id === card.id);
+    if (deckIdx !== -1) {
+      axisCards.push(deck.splice(deckIdx, 1)[0]);
+    }
+  }
+  axisCards.sort((a,b) => a.value - b.value);
+
+  // Deal hand
+  for (let i = 0; i < handSize; i++) {
+    if (deck.length > 0) handCards.push(deck.pop());
+  }
+
+  document.getElementById('setup-modal').style.display = 'none';
+  updateStats();
+  renderAxis();
+  renderHand();
+}
+
+// ===== SHUFFLE =====
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ===== RENDER AXIS =====
+function renderAxis() {
+  const container = document.getElementById('axis-cards');
+  container.innerHTML = '';
+
+  // Left slot
+  container.appendChild(createSlot(0));
+
+  axisCards.forEach((card, i) => {
+    const el = document.createElement('div');
+    el.className = 'axis-card';
+    el.dataset.id = card.id;
+
+    const img = document.createElement('img');
+    img.src = card.back_img;
+    img.alt = card.item;
+    img.onerror = () => { img.style.display='none'; el.style.background='#eee'; };
+    el.appendChild(img);
+
+    const badge = document.createElement('div');
+    badge.className = 'val-badge';
+    badge.textContent = formatValue(card.value) + ' L';
+    el.appendChild(badge);
+
+    const tooltip = document.createElement('div');
+    tooltip.className = 'card-tooltip';
+    tooltip.textContent = card.item;
+    el.appendChild(tooltip);
+
+    container.appendChild(el);
+    container.appendChild(createSlot(i + 1));
+  });
+
+  updateStats();
+
+  // Scroll to end if axis is long
+  setTimeout(() => {
+    const track = document.getElementById('axis-track');
+    // Keep scroll position centered if axis is very wide
+    if (track.scrollWidth > track.clientWidth) {
+      track.scrollLeft = (track.scrollWidth - track.clientWidth) / 2;
+    }
+  }, 50);
+}
+
+function createSlot(position) {
+  const slot = document.createElement('div');
+  slot.className = 'slot';
+  slot.dataset.pos = position;
+  const inner = document.createElement('div');
+  inner.className = 'slot-inner';
+  slot.appendChild(inner);
+  slot.addEventListener('click', () => placeCard(position));
+  return slot;
+}
+
+// ===== RENDER HAND =====
+function renderHand() {
+  const container = document.getElementById('hand-cards');
+  container.innerHTML = '';
+
+  handCards.forEach((card, i) => {
+    const el = document.createElement('div');
+    el.className = 'hand-card' + (selectedCard === card ? ' selected' : '');
+    el.dataset.id = card.id;
+
+    const img = document.createElement('img');
+    img.src = card.front_img;
+    img.alt = card.item;
+    img.onerror = () => { img.style.display='none'; el.style.background='#eee'; };
+    el.appendChild(img);
+
+    if (card.is_joker) {
+      const badge = document.createElement('div');
+      badge.className = 'joker-badge';
+      badge.textContent = 'Jokker';
+      el.appendChild(badge);
+    }
+
+    el.addEventListener('click', () => selectCard(card));
+    el.addEventListener('mouseenter', () => showInfo(card, false));
+    el.addEventListener('mouseleave', hideInfo);
+
+    container.appendChild(el);
+  });
+}
+
+// ===== SELECT CARD =====
+function selectCard(card) {
+  if (isAnimating) return;
+
+  if (selectedCard === card) {
+    selectedCard = null;
+    document.body.classList.remove('has-selection');
+    document.getElementById('hint-text').textContent = 'Vali kaart käest, seejärel koht teljel';
+  } else {
+    hideSelgitus();
+    selectedCard = card;
+    document.body.classList.add('has-selection');
+    document.getElementById('hint-text').textContent =
+      card.is_joker ? 'JOKKER – klõpsa kohale teljel' : 'Klõpsa kohale teljel kus kaart peaks olema';
+  }
+  renderHand();
+}
+
+// ===== PLACE CARD =====
+function placeCard(position) {
+  if (!selectedCard || isAnimating) return;
+  isAnimating = true;
+
+  const card = selectedCard;
+  selectedCard = null;
+  document.body.classList.remove('has-selection');
+
+  // Handle joker specially
+  if (card.is_joker) {
+    placeJoker(card, position);
+    return;
+  }
+
+  // Determine if placement is correct
+  const left = position > 0 ? axisCards[position - 1] : null;
+  const right = position < axisCards.length ? axisCards[position] : null;
+
+  const leftOk = !left || card.value >= left.value;
+  const rightOk = !right || card.value <= right.value;
+  const isCorrect = leftOk && rightOk;
+
+  // Insert into axis temporarily for animation
+  axisCards.splice(position, 0, card);
+
+  // Remove from hand
+  const handIdx = handCards.findIndex(c => c.id === card.id);
+  handCards.splice(handIdx, 1);
+
+  renderAxis();
+  renderHand();
+
+  // Find the new axis card element and animate flip
+  const axisEl = document.querySelector(`.axis-card[data-id="${card.id}"]`);
+
+  if (axisEl) {
+    // Show front first, then flip to back
+    const img = axisEl.querySelector('img');
+    img.src = card.front_img;
+
+    setTimeout(() => {
+      axisEl.classList.add('flipping');
+
+      setTimeout(() => {
+        img.src = card.back_img;
+      }, 270);
+
+      setTimeout(() => {
+        axisEl.classList.remove('flipping');
+
+        showSelgitus(card);
+
+        if (isCorrect) {
+          correctCount++;
+          showFeedback(true, card);
+        } else {
+          wrongCount++;
+          showFeedback(false, card);
+
+          // Remove from axis after showing feedback
+          setTimeout(() => {
+            const idx = axisCards.findIndex(c => c.id === card.id);
+            if (idx !== -1) {
+              axisCards.splice(idx, 1);
+            }
+            discardPile.push(card);
+            renderAxis();
+          }, 1500);
+        }
+
+        // Draw new card
+        if (deck.length > 0) {
+          const newCard = deck.pop();
+          handCards.push(newCard);
+        }
+
+        setTimeout(() => {
+          renderHand();
+          updateStats();
+          isAnimating = false;
+          checkWin();
+        }, isCorrect ? 1200 : 2000);
+
+      }, 620);
+    }, 100);
+  } else {
+    isAnimating = false;
+  }
+}
+
+// ===== JOKER =====
+function placeJoker(card, position) {
+  // Joker: look at neighbors, reveal their relative order hint
+  const left = position > 0 ? axisCards[position - 1] : null;
+  const right = position < axisCards.length ? axisCards[position] : null;
+
+  let msg = '🃏 JOKKER!\n';
+  if (left && right) {
+    msg = `Vahemik: ${formatValue(left.value)} L → ${formatValue(right.value)} L`;
+  } else if (left) {
+    msg = `Vähemalt ${formatValue(left.value)} L või rohkem`;
+  } else if (right) {
+    msg = `Kuni ${formatValue(right.value)} L`;
+  } else {
+    msg = 'Telg on tühi – kõik väärtused sobivad!';
+  }
+
+  showFeedbackMsg('JOKKER', msg, 'correct');
+  showSelgitus(card);
+
+  // Joker just goes to discard
+  const handIdx = handCards.findIndex(c => c.id === card.id);
+  handCards.splice(handIdx, 1);
+  discardPile.push(card);
+
+  if (deck.length > 0) {
+    handCards.push(deck.pop());
+  }
+
+  setTimeout(() => {
+    renderHand();
+    updateStats();
+    isAnimating = false;
+    checkWin();
+  }, 2000);
+}
+
+// ===== FEEDBACK =====
+function showFeedback(correct, card) {
+  const mainEl = document.getElementById('feedback-main');
+  const subEl = document.getElementById('feedback-sub');
+  const el = document.getElementById('feedback');
+
+  if (correct) {
+    mainEl.textContent = '✓ Õige!';
+    subEl.textContent = `${card.item} · ${formatValue(card.value)} liitrit`;
+    el.className = 'show correct';
+  } else {
+    mainEl.textContent = '✗ Vale!';
+    const correctPos = findCorrectPosition(card);
+    subEl.textContent = `${card.item} = ${formatValue(card.value)} L · ${correctPos}`;
+    el.className = 'show wrong';
+  }
+
+  setTimeout(() => { el.className = ''; }, correct ? 1000 : 1800);
+}
+
+function showFeedbackMsg(main, sub, type) {
+  document.getElementById('feedback-main').textContent = main;
+  document.getElementById('feedback-sub').textContent = sub;
+  document.getElementById('feedback').className = `show ${type}`;
+  setTimeout(() => { document.getElementById('feedback').className = ''; }, 2000);
+}
+
+function findCorrectPosition(card) {
+  const sorted = [...axisCards.filter(c => c.id !== card.id)].sort((a,b) => a.value - b.value);
+  let leftItem = null, rightItem = null;
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i].value <= card.value) leftItem = sorted[i];
+    if (sorted[i].value >= card.value && !rightItem) rightItem = sorted[i];
+  }
+  if (leftItem && rightItem) return `Peaks olema: ${leftItem.item} ja ${rightItem.item} vahel`;
+  if (leftItem) return `Peaks olema: ${leftItem.item} järel (kõige suurem)`;
+  if (rightItem) return `Peaks olema: enne ${rightItem.item} (kõige väiksem)`;
+  return 'Vaata väärtust uuesti';
+}
+
+// ===== SELGITUS =====
+function showSelgitus(card) {
+  const fact = CARD_FACTS[card.id] || card.fact || '';
+  document.getElementById('selgitus-item').textContent = card.item;
+  document.getElementById('selgitus-value-badge').textContent = formatValue(card.value) + ' L';
+  document.getElementById('selgitus-text').textContent = fact;
+  const bar = document.getElementById('selgitus-bar');
+  bar.classList.remove('show');
+  void bar.offsetWidth; // restart animation
+  bar.classList.add('show');
+}
+
+function hideSelgitus() {
+  document.getElementById('selgitus-bar').classList.remove('show');
+}
+
+// ===== INFO =====
+function showInfo(card, isAxisCard) {
+  const bar = document.getElementById('info-bar');
+  document.getElementById('info-text').textContent = card.item + (card.fact ? ' · ' + card.fact.substring(0, 80) : '');
+  document.getElementById('info-value').textContent = isAxisCard ? formatValue(card.value) + ' L' : card.cat_code;
+  bar.classList.add('show');
+}
+function hideInfo() {
+  document.getElementById('info-bar').classList.remove('show');
+}
+
+// ===== STATS =====
+function updateStats() {
+  document.getElementById('stat-correct').textContent = correctCount;
+  document.getElementById('stat-wrong').textContent = wrongCount;
+  document.getElementById('stat-deck').textContent = deck.length;
+  document.getElementById('stat-axis').textContent = axisCards.length;
+  document.getElementById('deck-count').textContent = deck.length;
+  document.getElementById('discard-count').textContent = discardPile.length;
+}
+
+// ===== WIN CHECK =====
+function checkWin() {
+  if (deck.length === 0 && handCards.length === 0) {
+    setTimeout(() => showWin(), 500);
+  }
+}
+
+function showWin() {
+  const total = correctCount + wrongCount;
+  const pct = total > 0 ? Math.round(correctCount / total * 100) : 0;
+  document.getElementById('modal-title').textContent = 'Mäng läbi!';
+  document.getElementById('modal-body').textContent =
+    `Teljel on ${axisCards.length} kaarti.\n` +
+    `Õigeid paigutusi: ${correctCount} / ${total} (${pct}%).\n` +
+    `Kaardid on järjestatud väiksemast varjatust vee kulust suuremani!`;
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+// ===== FORMAT =====
+function formatValue(v) {
+  if (v >= 1000) return (v/1000).toFixed(v % 1000 === 0 ? 0 : 1) + 'k';
+  return v.toString();
+}
+
+// ===== CATEGORY CHECKBOXES =====
+document.querySelectorAll('.cat-check').forEach(label => {
+  label.addEventListener('click', (e) => {
+    e.preventDefault();
+    const inp = label.querySelector('input');
+    inp.checked = !inp.checked;
+    label.classList.toggle('active', inp.checked);
+  });
+});
+
+// Show setup on load
+document.getElementById('setup-modal').style.display = 'flex';
+</script>
+</body>
+</html>

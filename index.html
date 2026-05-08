@@ -557,6 +557,35 @@
     color: #2a2a2a;
   }
 
+  /* FOOTER */
+  #game-footer {
+    background: #f5f5f5;
+    border-top: 2px solid var(--black);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-shrink: 0;
+  }
+  #game-footer .footer-logo img { height: 44px; display: block; }
+  #game-footer .footer-info {
+    flex: 1;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: #333;
+    text-align: right;
+  }
+  #game-footer .footer-info a {
+    color: var(--black);
+    font-weight: bold;
+    text-decoration: underline;
+  }
+  @media (max-width: 480px) {
+    #game-footer { flex-direction: column; align-items: flex-start; gap: 12px; }
+    #game-footer .footer-info { text-align: left; }
+  }
+
   /* SCROLLBAR */
   #axis-track::-webkit-scrollbar { height: 6px; }
   #axis-track::-webkit-scrollbar-track { background: var(--gray-light); }
@@ -697,6 +726,20 @@
 <div id="info-bar">
   <span id="info-text">Vali kaart</span>
   <span id="info-value"></span>
+</div>
+
+<!-- FOOTER -->
+<div id="game-footer">
+  <div class="footer-logo">
+    <a href="https://thinkingames.institute/mang-varjatud-vesi/" target="_blank" rel="noopener">
+      <img src="logo.png" alt="ThinkInGames Institute OÜ logo">
+    </a>
+  </div>
+  <div class="footer-info">
+    Mängu väljaandja: <strong>ThinkInGames Institute OÜ</strong><br>
+    Paberkujul mäng on saadaval aadressil
+    <a href="https://thinkingames.institute/mang-varjatud-vesi/" target="_blank" rel="noopener">thinkingames.institute</a>
+  </div>
 </div>
 
 <script>

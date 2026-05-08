@@ -452,10 +452,12 @@
     transition: all 0.15s;
   }
   .cat-check input { display: none; }
+  .cat-check img { height: 22px; width: auto; display: block; transition: filter 0.15s; }
   .cat-check.active {
     background: var(--black);
     color: var(--white);
   }
+  .cat-check.active img { filter: invert(1); }
 
   /* INFO PANEL */
   #info-bar {
@@ -620,10 +622,10 @@
         <label>Kaartide kategooriad:</label>
       </div>
       <div class="categories-check" id="cat-checks">
-        <label class="cat-check active"><input type="checkbox" value="S/J" checked>Söök & Jook</label>
-        <label class="cat-check active"><input type="checkbox" value="T" checked>Tekstiil</label>
-        <label class="cat-check active"><input type="checkbox" value="D/E" checked>Digi & Elektro</label>
-        <label class="cat-check active"><input type="checkbox" value="A" checked>Asjad</label>
+        <label class="cat-check active"><input type="checkbox" value="S/J" checked><img src="varjatud_vesi_sook.png" alt="">Söök & Jook</label>
+        <label class="cat-check active"><input type="checkbox" value="T" checked><img src="varjatud_vesi_tekstiil.png" alt="">Tekstiil</label>
+        <label class="cat-check active"><input type="checkbox" value="D/E" checked><img src="varjatud_vesi_digi.png" alt="">Digiteenused</label>
+        <label class="cat-check active"><input type="checkbox" value="A" checked><img src="varjatud_vesi_asjad.png" alt="">Asjad</label>
       </div>
       <div class="setup-option" style="margin-top:12px;">
         <label>Kaarte käes:</label>

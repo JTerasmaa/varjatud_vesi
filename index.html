@@ -395,7 +395,7 @@
     background: var(--white);
     border-radius: 16px;
     padding: 48px;
-    max-width: 540px;
+    max-width: 720px;
     width: 90%;
     text-align: center;
   }
@@ -436,24 +436,29 @@
   }
   .categories-check {
     display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: 10px;
+    flex-wrap: nowrap;
     margin: 8px 0;
+    justify-content: center;
   }
   .cat-check {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
+    justify-content: center;
+    gap: 8px;
+    flex: 1;
+    font-size: 0.82rem;
     cursor: pointer;
     border: 2px solid var(--black);
-    padding: 4px 10px;
-    border-radius: 20px;
+    padding: 14px 8px 12px;
+    border-radius: 12px;
     user-select: none;
     transition: all 0.15s;
+    min-width: 0;
   }
   .cat-check input { display: none; }
-  .cat-check img { height: 22px; width: auto; display: block; transition: filter 0.15s; }
+  .cat-check img { height: 52px; width: auto; display: block; transition: filter 0.15s; }
   .cat-check.active {
     background: var(--black);
     color: var(--white);

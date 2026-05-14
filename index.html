@@ -621,6 +621,89 @@
   .mode-btn.active { background: var(--black); color: var(--white); }
   .mode-btn.active .mode-desc { color: var(--gray-light); }
 
+  /* DEMO BADGE */
+  #demo-badge {
+    display: none;
+    background: #d97706;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  body.demo-mode #demo-badge { display: inline-block; }
+  #setup-demo-note {
+    display: none;
+    background: #fef3c7;
+    border: 1px solid #d97706;
+    border-radius: 8px;
+    padding: 9px 14px;
+    font-size: 0.8rem;
+    color: #78350f;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  #setup-demo-note a { color: #78350f; font-weight: bold; }
+  body.demo-mode #setup-demo-note { display: block; }
+  #auth-user {
+    display: none;
+    font-size: 0.72rem;
+    color: var(--gray-light);
+    align-items: center;
+    gap: 8px;
+  }
+  body.auth-ok #auth-user { display: flex; }
+  #auth-user button { background: none; border: none; cursor: pointer; color: var(--gray-light); font-size: 0.72rem; text-decoration: underline; padding: 0; font-family: inherit; }
+
+  /* LOGIN MODAL */
+  #login-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,10,0.88);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+  }
+  #login-modal.show { display: flex; }
+  #login-box {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 40px 44px;
+    max-width: 420px;
+    width: 90%;
+    text-align: center;
+  }
+  #login-box .lock-icon { font-size: 2.2rem; margin-bottom: 10px; }
+  #login-box h2 { font-size: 1.5rem; letter-spacing: 0.04em; margin-bottom: 12px; }
+  #login-box .login-intro { font-size: 0.86rem; color: #555; line-height: 1.7; margin-bottom: 22px; }
+  .login-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }
+  .login-form input {
+    padding: 11px 14px;
+    border: 2px solid var(--black);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: var(--white);
+    width: 100%;
+    box-sizing: border-box;
+    color: var(--black);
+  }
+  .login-form input:focus { outline: none; border-color: #555; }
+  #login-error { color: #b91c1c; font-size: 0.8rem; min-height: 1.1em; margin-top: 2px; }
+  .login-buy-link {
+    display: inline-block;
+    margin: 14px 0 6px;
+    font-size: 0.85rem;
+    color: var(--black);
+    font-weight: 700;
+    text-decoration: underline;
+  }
+  .login-fine { font-size: 0.72rem; color: var(--gray-dark); margin-top: 6px; line-height: 1.5; }
+
   /* SCROLLBAR */
   #axis-track::-webkit-scrollbar { height: 6px; }
   #axis-track::-webkit-scrollbar-track { background: var(--gray-light); }
@@ -700,6 +783,9 @@
       </div>
     </div>
 
+    <div id="setup-demo-note">🎮 <strong>Demo režiim</strong> — saad katsetada 3 kaardi asetamist.<br>
+      Täisversiooni jaoks <a href="#" onclick="showLoginModal();return false;">logi sisse</a> pabermängu koodiga.</div>
+
     <button class="btn" onclick="startGame()">Alusta mängu</button>
 
     <p style="margin-top:20px; font-size:0.75rem; color:var(--gray-dark); line-height:1.6;">
@@ -717,6 +803,11 @@
     <div class="stat"><span class="stat-num" id="stat-wrong">0</span>Vale</div>
     <div class="stat"><span class="stat-num" id="stat-deck">—</span>Pakis</div>
     <div class="stat"><span class="stat-num" id="stat-axis">—</span>Teljel</div>
+    <span id="demo-badge">Demo 0/3</span>
+  </div>
+  <div id="auth-user">
+    <span id="auth-email"></span>
+    <button onclick="logout()">Logi välja</button>
   </div>
   <button class="btn secondary" onclick="showSetup()" style="font-size:0.75rem; padding:6px 16px;">↺ Uus mäng</button>
 </div>
@@ -777,6 +868,28 @@
     <p id="modal-body"></p>
     <button class="btn" onclick="showSetup()">Uus mäng</button>
     <button class="btn secondary" onclick="closeModal()">Vaata tulemust</button>
+  </div>
+</div>
+
+<!-- LOGIN MODAL -->
+<div id="login-modal">
+  <div id="login-box">
+    <div class="lock-icon">🔒</div>
+    <h2>Täisversioon</h2>
+    <p class="login-intro">
+      Demo on läbi — said katsetada <strong>3 kaardi</strong> asetamist.<br>
+      Täisversiooni avamiseks sisesta oma e-post ja paberkujul mänguga kaasas olev kood.
+    </p>
+    <div class="login-form">
+      <input type="email" id="login-email" placeholder="E-posti aadress" autocomplete="email">
+      <input type="text" id="login-code" placeholder="Ostukood (nt VARV-2025-XXXX)" autocomplete="off" style="text-transform:uppercase;">
+      <div id="login-error"></div>
+      <button class="btn" onclick="handleLogin()">Ava täisversioon</button>
+    </div>
+    <a href="https://thinkingames.institute/mang-varjatud-vesi/" target="_blank" rel="noopener" class="login-buy-link">
+      → Osta paberkujul mäng ja saa kood
+    </a>
+    <p class="login-fine">Kood on ühekordseks kasutuseks mõeldud ainult sulle.<br>Sisselogimine jäetakse meelde selles brauseris.</p>
   </div>
 </div>
 
@@ -893,6 +1006,25 @@ let wrongCount = 0;
 let handSize = 4;
 let isAnimating = false;
 let gameMode = 'harjutamine';
+let isAuthenticated = false;
+let demoPlacementsUsed = 0;
+const DEMO_LIMIT = 3;
+
+// ===== OSTUKOODID =====
+// Lisa siia kood iga müüdud pabermängu jaoks (üks kood per ostja).
+// Koodid on nähtavad lähtekoodis — turvalisema lahenduse jaoks kasuta serveripoolset valideerimist.
+const VALID_CODES = [
+  'VARV-2025-AAA1',
+  'VARV-2025-AAA2',
+  'VARV-2025-AAA3',
+  'VARV-2025-AAA4',
+  'VARV-2025-AAA5',
+  'VARV-2025-BBB1',
+  'VARV-2025-BBB2',
+  'VARV-2025-BBB3',
+  'VARV-2025-BBB4',
+  'VARV-2025-BBB5',
+];
 
 // ===== SETUP =====
 function showSetup() {
@@ -904,6 +1036,13 @@ function startGame() {
   if (selectedCats.length === 0) { alert('Vali vähemalt üks kategooria!'); return; }
 
   gameMode = document.querySelector('.mode-btn.active').dataset.mode;
+  demoPlacementsUsed = 0;
+  if (!isAuthenticated) {
+    document.body.classList.add('demo-mode');
+    updateDemoBadge();
+  } else {
+    document.body.classList.remove('demo-mode');
+  }
   handSize = parseInt(document.getElementById('hand-size').value);
   const axisStart = parseInt(document.getElementById('axis-start').value);
 
@@ -1160,6 +1299,7 @@ function placeCard(position) {
           updateStats();
           isAnimating = false;
           checkWin();
+          if (!isAuthenticated) countDemoPlacement();
         }, isCorrect ? 1200 : 2000);
 
       }, 620);
@@ -1209,6 +1349,7 @@ function placeJoker(card, position) {
     updateStats();
     isAnimating = false;
     checkWin();
+    if (!isAuthenticated) countDemoPlacement();
   }, 2000);
 }
 
@@ -1326,6 +1467,76 @@ function formatValue(v) {
   return v.toString();
 }
 
+// ===== AUTH =====
+function checkAuth() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('vv_auth') || 'null');
+    if (saved && saved.email && VALID_CODES.includes(saved.code)) {
+      isAuthenticated = true;
+      document.body.classList.add('auth-ok');
+      document.body.classList.remove('demo-mode');
+      const shortEmail = saved.email.length > 22 ? saved.email.slice(0, 20) + '…' : saved.email;
+      document.getElementById('auth-email').textContent = shortEmail;
+    } else {
+      document.body.classList.add('demo-mode');
+    }
+  } catch (e) {
+    document.body.classList.add('demo-mode');
+  }
+}
+
+function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const code = document.getElementById('login-code').value.trim().toUpperCase().replace(/\s/g, '');
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+
+  if (!email || !email.includes('@')) {
+    errEl.textContent = 'Palun sisesta kehtiv e-posti aadress.';
+    return;
+  }
+  if (!code) {
+    errEl.textContent = 'Palun sisesta ostukood.';
+    return;
+  }
+  if (!VALID_CODES.includes(code)) {
+    errEl.textContent = 'Kood ei ole kehtiv. Kontrolli mängu pakendilt.';
+    return;
+  }
+
+  localStorage.setItem('vv_auth', JSON.stringify({ email, code }));
+  isAuthenticated = true;
+  document.body.classList.add('auth-ok');
+  document.body.classList.remove('demo-mode');
+  const shortEmail = email.length > 22 ? email.slice(0, 20) + '…' : email;
+  document.getElementById('auth-email').textContent = shortEmail;
+  document.getElementById('login-modal').classList.remove('show');
+  updateDemoBadge();
+}
+
+function showLoginModal() {
+  document.getElementById('login-modal').classList.add('show');
+}
+
+function countDemoPlacement() {
+  demoPlacementsUsed++;
+  updateDemoBadge();
+  if (demoPlacementsUsed >= DEMO_LIMIT) {
+    setTimeout(() => showLoginModal(), 400);
+  }
+}
+
+function updateDemoBadge() {
+  const remaining = Math.max(0, DEMO_LIMIT - demoPlacementsUsed);
+  document.getElementById('demo-badge').textContent =
+    remaining > 0 ? `Demo ${demoPlacementsUsed}/${DEMO_LIMIT}` : 'Demo lõppes';
+}
+
+function logout() {
+  localStorage.removeItem('vv_auth');
+  location.reload();
+}
+
 // ===== MODE BUTTONS =====
 document.querySelectorAll('.mode-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1346,7 +1557,15 @@ document.querySelectorAll('.cat-check').forEach(label => {
   });
 });
 
-// Show setup on load
+// Enter key in login fields
+['login-email', 'login-code'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleLogin();
+  });
+});
+
+// Init
+checkAuth();
 document.getElementById('setup-modal').style.display = 'flex';
 </script>
 </body>
